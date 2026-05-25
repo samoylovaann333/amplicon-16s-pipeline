@@ -1,0 +1,23 @@
+name: qiime2-2024.10
+channels:
+  - conda-forge
+  - bioconda
+  - qiime2
+  - defaults
+dependencies:
+  - qiime2=2024.10
+  - q2cli=2024.10
+  - q2-feature-classifier=2024.10
+  - q2-dada2=2024.10
+  - q2-cutadapt=2024.10
+  - q2-alignment=2024.10
+  - q2-phylogeny=2024.10
+  - q2-diversity=2024.10
+  - q2-taxa=2024.10
+  - q2-metadata=2024.10
+  - q2-feature-table=2024.10
+  - q2-composition=2024.10
+  - biom-format
+  - pip
+  - pip:
+    - multiqc

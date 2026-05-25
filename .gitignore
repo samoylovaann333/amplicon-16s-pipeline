@@ -1,0 +1,22 @@
+# Большие файлы данных
+*.sra
+*.fastq
+*.fastq.gz
+*.bam
+*.sam
+*.biom
+
+# Классификаторы (слишком большие для GitHub)
+classifiers/
+
+# Результаты анализа (генерируются локально)
+results/
+picrust2/output/
+qiime2/
+
+# Логи
+*.log
+pipeline_*.log
+
+# macOS
+.DS_Store

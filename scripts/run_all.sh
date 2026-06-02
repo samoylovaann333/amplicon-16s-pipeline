@@ -11,10 +11,30 @@ mkdir -p "$PROJECT_DIR"
 
 echo "╔══════════════════════════════════════════════════╗"
 echo "║  16S rRNA Pipeline — SRX14284601 / AR03-4        ║"
-echo "║  Apple M4 Silicon  |  QIIME2 2024.10             ║"
+echo "║  Apple M4 Silicon  |  QIIME2 2026.4              ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo "  Лог: $LOG_FILE"
 echo ""
+
+# Проверка: зависимости установлены?
+set +u
+source "$(conda info --base)/etc/profile.d/conda.sh"
+set -u
+if ! conda env list | grep -q "$QIIME2_ENV"; then
+  echo "[ERROR] QIIME2 env '$QIIME2_ENV' не найден."
+  echo "        Сначала запустите: bash scripts/00_install.sh"
+  exit 1
+fi
+if ! conda env list | grep -q "^picrust2"; then
+  echo "[ERROR] PICRUSt2 env не найден."
+  echo "        Сначала запустите: bash scripts/00_install.sh"
+  exit 1
+fi
+if [ ! -f "$CLASSIFIER_PATH" ] || [ ! -f "$TAXONOMY_PATH" ]; then
+  echo "[ERROR] Референсные файлы SILVA не найдены."
+  echo "        Сначала запустите: bash scripts/00_install.sh"
+  exit 1
+fi
 
 run_step() {
   local step="$1"
@@ -52,8 +72,8 @@ echo "║    $PROJECT_DIR/results/taxonomy/taxonomy.tsv"
 echo "║"
 echo "║  ФУНКЦИОНАЛЬНОСТЬ:"
 echo "║    $PROJECT_DIR/results/picrust2/path_abun_unstrat_descrip.tsv.gz"
-echo "║    $PROJECT_DIR/results/picrust2/pred_metagenome_unstrat_descrip.tsv.gz (EC)"
-echo "║    $PROJECT_DIR/results/picrust2/pred_metagenome_unstrat_descrip.tsv.gz (KO)"
+echo "║    $PROJECT_DIR/results/picrust2/EC_pred_metagenome_unstrat_descrip.tsv.gz"
+echo "║    $PROJECT_DIR/results/picrust2/KO_pred_metagenome_unstrat_descrip.tsv.gz"
 echo "║"
 echo "║  РАЗНООБРАЗИЕ:"
 echo "║    $PROJECT_DIR/qiime2/alpha-rarefaction.qzv"

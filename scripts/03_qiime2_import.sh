@@ -2,7 +2,10 @@
 # scripts/03_qiime2_import.sh — импорт в QIIME2 + удаление праймеров
 set -euo pipefail
 source "$(dirname "$0")/../config/params.sh"
+set +u
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$QIIME2_ENV"
+set -u
 
 echo "════════════════════════════════════════"
 echo " 03 · QIIME2: импорт + cutadapt"

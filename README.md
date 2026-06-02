@@ -3,7 +3,7 @@
 **Образец:** AR03-4 | Gut microbiome | Canine Atopic Dermatitis  
 **Проект:** PRJNA810286 — Seoul National University  
 **Платформа:** Apple M4 Silicon (macOS Sequoia 15.3)  
-**Инструменты:** QIIME2 2024.10 · PICRUSt2 2.5.3 · SILVA 138
+**Инструменты:** QIIME2 2026.4 · PICRUSt2 2.6.3 · SILVA 138
 
 ---
 

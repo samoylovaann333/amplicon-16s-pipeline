@@ -2,6 +2,9 @@
 # scripts/07_picrust2.sh — функциональный анализ PICRUSt2
 set -euo pipefail
 source "$(dirname "$0")/../config/params.sh"
+set +u
+source "$(conda info --base)/etc/profile.d/conda.sh"
+set -u
 
 echo "════════════════════════════════════════"
 echo " 07 · Функциональный анализ (PICRUSt2)"
@@ -12,12 +15,9 @@ P2_DIR="$PROJECT_DIR/picrust2"
 RESULTS_DIR="$PROJECT_DIR/results/picrust2"
 mkdir -p "$P2_DIR/input" "$RESULTS_DIR"
 
-# ── Активируем PICRUSt2 env ───────────────────────────────────
-conda activate picrust2
-
-# ── Экспорт из QIIME2 ─────────────────────────────────────────
+# ── Экспорт из QIIME2 (используем qiime2 env) ─────────────────
 echo "[INFO] Экспорт feature table и rep-seqs из QIIME2..."
-conda activate "$QIIME2_ENV"
+set +u; conda activate "$QIIME2_ENV"; set -u
 
 qiime tools export \
   --input-path "$Q2_DIR/table-filtered.qza" \
@@ -27,7 +27,10 @@ qiime tools export \
   --input-path "$Q2_DIR/rep-seqs.qza" \
   --output-path "$P2_DIR/input/"
 
-conda activate picrust2
+set +u; conda deactivate; set -u
+
+# ── Переключаемся в PICRUSt2 env ─────────────────────────────
+set +u; conda activate picrust2; set -u
 
 # ── PICRUSt2 полный пайплайн ──────────────────────────────────
 echo "[INFO] Запуск picrust2_pipeline.py (~3-5 мин на M4)..."
@@ -36,6 +39,7 @@ picrust2_pipeline.py \
   -i "$P2_DIR/input/feature-table.biom" \
   -o "$P2_DIR/output/" \
   -p "$THREADS" \
+  --hsp_method mp \
   --stratified \
   --coverage \
   --verbose
@@ -68,15 +72,17 @@ convert_table.py \
 # ── Копируем ключевые результаты ──────────────────────────────
 echo "[INFO] Копируем результаты в $RESULTS_DIR..."
 cp "$P2_DIR/output/pathways_out/path_abun_unstrat_descrip.tsv.gz" "$RESULTS_DIR/"
-cp "$P2_DIR/output/EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz" "$RESULTS_DIR/"
-cp "$P2_DIR/output/KO_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz" "$RESULTS_DIR/"
+cp "$P2_DIR/output/EC_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz" "$RESULTS_DIR/EC_pred_metagenome_unstrat_descrip.tsv.gz"
+cp "$P2_DIR/output/KO_metagenome_out/pred_metagenome_unstrat_descrip.tsv.gz" "$RESULTS_DIR/KO_pred_metagenome_unstrat_descrip.tsv.gz"
 cp "$P2_DIR/output/pathways_out/path_abun_strat.tsv.gz" "$RESULTS_DIR/" 2>/dev/null || true
 [ -f "$P2_DIR/output/kegg_pathways_unstrat.tsv.gz" ] && \
   cp "$P2_DIR/output/kegg_pathways_unstrat.tsv.gz" "$RESULTS_DIR/"
 
-# NSTI качество
-cp "$P2_DIR/output/intermediate/place_seqs/placed_seqs_nsti.tsv" \
-   "$RESULTS_DIR/nsti_per_asv.tsv" 2>/dev/null || true
+# NSTI качество (PICRUSt2 2.6.3 пишет файлы непосредственно в output/)
+cp "$P2_DIR/output/combined_marker_predicted_and_nsti.tsv.gz" \
+   "$RESULTS_DIR/nsti_per_asv.tsv.gz" 2>/dev/null || true
+cp "$P2_DIR/output/KO_metagenome_out/weighted_nsti.tsv.gz" \
+   "$RESULTS_DIR/weighted_nsti.tsv.gz" 2>/dev/null || true
 
 echo ""
 echo "[OK] PICRUSt2 завершён."

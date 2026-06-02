@@ -2,7 +2,10 @@
 # scripts/05_taxonomy.sh — таксономическая классификация + экспорт TSV
 set -euo pipefail
 source "$(dirname "$0")/../config/params.sh"
+set +u
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$QIIME2_ENV"
+set -u
 
 echo "════════════════════════════════════════"
 echo " 05 · Таксономия (SILVA 138)"
@@ -12,14 +15,37 @@ Q2_DIR="$PROJECT_DIR/qiime2"
 EXPORT_DIR="$PROJECT_DIR/results/taxonomy"
 mkdir -p "$EXPORT_DIR"
 
-# ── Классификация ─────────────────────────────────────────────
-echo "[INFO] classify-sklearn с SILVA 138 (confidence=$CLASSIFIER_CONFIDENCE)..."
-qiime feature-classifier classify-sklearn \
-  --i-classifier "$CLASSIFIER_PATH" \
-  --i-reads "$Q2_DIR/rep-seqs.qza" \
-  --p-n-jobs "$THREADS" \
-  --p-confidence "$CLASSIFIER_CONFIDENCE" \
-  --o-classification "$Q2_DIR/taxonomy.qza"
+# ── Обрезка V3-части из V3-V4 ASV через cutadapt ────────────────────────────
+# ASV покрывают V3-V4 (~428 bp без праймеров). Обрезаем 515F вперёд,
+# получая V4-фрагмент (~253 bp) для классификации по SILVA 515-806.
+echo "[INFO] Обрезаем V3-часть ASV (cutadapt, 515F → конец)..."
+qiime tools export --input-path "$Q2_DIR/rep-seqs.qza" \
+  --output-path "$Q2_DIR/rep-seqs-export/"
+
+cutadapt \
+  --front GTGYCAGCMGCCGCGGTAA \
+  --discard-untrimmed \
+  --cores "$THREADS" \
+  -o "$Q2_DIR/dna-sequences-v4.fasta" \
+  "$Q2_DIR/rep-seqs-export/dna-sequences.fasta" 2>&1 | grep -E "Total reads|Reads written"
+
+qiime tools import \
+  --type 'FeatureData[Sequence]' \
+  --input-path "$Q2_DIR/dna-sequences-v4.fasta" \
+  --output-path "$Q2_DIR/rep-seqs-v4.qza"
+
+# ── Классификация (vsearch, не требует предобученного sklearn-классификатора) ──
+echo "[INFO] classify-consensus-vsearch с SILVA 138 (identity=$VSEARCH_PERC_IDENTITY)..."
+qiime feature-classifier classify-consensus-vsearch \
+  --i-query "$Q2_DIR/rep-seqs-v4.qza" \
+  --i-reference-reads "$CLASSIFIER_PATH" \
+  --i-reference-taxonomy "$TAXONOMY_PATH" \
+  --p-threads "$THREADS" \
+  --p-perc-identity "$VSEARCH_PERC_IDENTITY" \
+  --p-maxaccepts 10 \
+  --p-maxrejects 100 \
+  --o-classification "$Q2_DIR/taxonomy.qza" \
+  --o-search-results "$Q2_DIR/taxonomy-search.qza"
 
 # ── Визуализация таксономии ───────────────────────────────────
 echo "[INFO] Создаём визуализации таксономии..."

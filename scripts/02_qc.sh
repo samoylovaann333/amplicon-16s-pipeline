@@ -29,7 +29,11 @@ multiqc "$QC_DIR/fastqc_raw/" \
 
 # ── Trimmomatic ───────────────────────────────────────────────
 echo "[INFO] Trimmomatic PE (удаление адаптеров и low-quality)..."
-ADAPTER_FA="$(dirname "$(which trimmomatic)")/../share/trimmomatic/adapters/NexteraPE-PE.fa"
+ADAPTER_FA="$(find "$(brew --prefix trimmomatic 2>/dev/null || echo /opt/homebrew/opt/trimmomatic)" \
+  -name 'NexteraPE-PE.fa' 2>/dev/null | head -1)"
+[ -z "$ADAPTER_FA" ] && \
+  ADAPTER_FA="$(find /opt/homebrew -name 'NexteraPE-PE.fa' 2>/dev/null | head -1)"
+[ -z "$ADAPTER_FA" ] && { echo "[ERROR] NexteraPE-PE.fa не найден. Установите trimmomatic."; exit 1; }
 
 trimmomatic PE \
   -threads "$THREADS" -phred33 \

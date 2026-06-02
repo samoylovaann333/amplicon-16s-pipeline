@@ -2,7 +2,10 @@
 # scripts/06_diversity.sh — филогения + alpha/beta разнообразие
 set -euo pipefail
 source "$(dirname "$0")/../config/params.sh"
+set +u
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$QIIME2_ENV"
+set -u
 
 echo "════════════════════════════════════════"
 echo " 06 · Филогения + Разнообразие"
@@ -14,6 +17,10 @@ META="$PROJECT_DIR/metadata.tsv"
 mkdir -p "$PHYLO_DIR"
 
 # ── MAFFT выравнивание ───────────────────────────────────────
+if [ -f "$PHYLO_DIR/rooted-tree.qza" ]; then
+  echo "[SKIP] Филогенетическое дерево уже построено"
+else
+
 echo "[INFO] MAFFT: множественное выравнивание ASV..."
 qiime alignment mafft \
   --i-sequences "$Q2_DIR/rep-seqs.qza" \
@@ -35,7 +42,12 @@ qiime phylogeny midpoint-root \
   --i-tree "$PHYLO_DIR/unrooted-tree.qza" \
   --o-rooted-tree "$PHYLO_DIR/rooted-tree.qza"
 
+fi  # end skip guard
+
 # ── Кривые рарефакции ─────────────────────────────────────────
+if [ -f "$Q2_DIR/alpha-rarefaction.qzv" ]; then
+  echo "[SKIP] Alpha-rarefaction уже выполнена"
+else
 echo "[INFO] Alpha-rarefaction curves..."
 qiime diversity alpha-rarefaction \
   --i-table "$Q2_DIR/table-filtered.qza" \
@@ -44,18 +56,42 @@ qiime diversity alpha-rarefaction \
   --p-steps 50 \
   --p-metrics faith_pd observed_features shannon \
   --o-visualization "$Q2_DIR/alpha-rarefaction.qzv"
+fi  # end skip guard
 
-# ── Core diversity metrics ────────────────────────────────────
-echo "[INFO] Core diversity metrics (alpha + beta)..."
-qiime diversity core-metrics-phylogenetic \
+# ── Alpha diversity (один образец — beta diversity недоступна) ───────────────
+echo "[INFO] Alpha diversity metrics..."
+mkdir -p "$Q2_DIR/diversity"
+
+qiime diversity alpha-phylogenetic \
   --i-phylogeny "$PHYLO_DIR/rooted-tree.qza" \
   --i-table "$Q2_DIR/table-filtered.qza" \
-  --p-sampling-depth "$SAMPLING_DEPTH" \
-  --m-metadata-file "$META" \
-  --output-dir "$Q2_DIR/diversity/"
+  --p-metric faith_pd \
+  --o-alpha-diversity "$Q2_DIR/diversity/faith_pd_vector.qza"
+
+qiime diversity alpha \
+  --i-table "$Q2_DIR/table-filtered.qza" \
+  --p-metric shannon \
+  --o-alpha-diversity "$Q2_DIR/diversity/shannon_vector.qza"
+
+qiime diversity alpha \
+  --i-table "$Q2_DIR/table-filtered.qza" \
+  --p-metric observed_features \
+  --o-alpha-diversity "$Q2_DIR/diversity/observed_features_vector.qza"
+
+qiime diversity alpha \
+  --i-table "$Q2_DIR/table-filtered.qza" \
+  --p-metric chao1 \
+  --o-alpha-diversity "$Q2_DIR/diversity/chao1_vector.qza"
+
+# Экспорт alpha-метрик в TSV
+qiime tools export --input-path "$Q2_DIR/diversity/faith_pd_vector.qza" \
+  --output-path "$Q2_DIR/diversity/faith_pd/"
+qiime tools export --input-path "$Q2_DIR/diversity/shannon_vector.qza" \
+  --output-path "$Q2_DIR/diversity/shannon/"
+qiime tools export --input-path "$Q2_DIR/diversity/observed_features_vector.qza" \
+  --output-path "$Q2_DIR/diversity/observed_features/"
 
 echo ""
-echo "[OK] Разнообразие вычислено."
+echo "[OK] Разнообразие вычислено (один образец — только alpha diversity)."
 echo "     Файлы в: $Q2_DIR/diversity/"
-echo "     Ключевые: faith_pd_vector.qza, shannon_vector.qza,"
-echo "               unweighted_unifrac_emperor.qzv"
+echo "     Ключевые: faith_pd_vector.qza, shannon_vector.qza, observed_features_vector.qza"

@@ -11,6 +11,13 @@ echo "════════════════════════�
 RAW_DIR="$PROJECT_DIR/raw"
 mkdir -p "$RAW_DIR"
 
+# ── Пропуск если файлы уже скачаны ───────────────────────────
+if [ -f "$RAW_DIR/${SAMPLE_ID}_R1.fastq.gz" ] && [ -f "$RAW_DIR/${SAMPLE_ID}_R2.fastq.gz" ]; then
+  echo "[SKIP] Файлы уже существуют: ${SAMPLE_ID}_R1/R2.fastq.gz"
+  ls -lh "$RAW_DIR/${SAMPLE_ID}"_R*.fastq.gz
+  exit 0
+fi
+
 # ── prefetch ──────────────────────────────────────────────────
 echo "[INFO] prefetch $ACCESSION ..."
 prefetch "$ACCESSION" --output-directory "$RAW_DIR" --progress
@@ -31,7 +38,7 @@ mv "$RAW_DIR/${ACCESSION}_1.fastq.gz" "$RAW_DIR/${SAMPLE_ID}_R1.fastq.gz"
 mv "$RAW_DIR/${ACCESSION}_2.fastq.gz" "$RAW_DIR/${SAMPLE_ID}_R2.fastq.gz"
 
 # ── Проверка ──────────────────────────────────────────────────
-R1_COUNT=$(zcat "$RAW_DIR/${SAMPLE_ID}_R1.fastq.gz" | wc -l | awk '{print $1/4}')
-R2_COUNT=$(zcat "$RAW_DIR/${SAMPLE_ID}_R2.fastq.gz" | wc -l | awk '{print $1/4}')
+R1_COUNT=$(gunzip -c "$RAW_DIR/${SAMPLE_ID}_R1.fastq.gz" | wc -l | awk '{print $1/4}')
+R2_COUNT=$(gunzip -c "$RAW_DIR/${SAMPLE_ID}_R2.fastq.gz" | wc -l | awk '{print $1/4}')
 echo "[OK] R1: $R1_COUNT reads | R2: $R2_COUNT reads"
 ls -lh "$RAW_DIR/"
